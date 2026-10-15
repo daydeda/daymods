@@ -3,7 +3,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-34d399?style=flat-square"></a>
   <img alt="Claude Code 2.1.300+" src="https://img.shields.io/badge/Claude%20Code-2.1.300%2B-818cf8?style=flat-square">
-  <img alt="mods" src="https://img.shields.io/badge/mods-3-f472b6?style=flat-square">
+  <img alt="mods" src="https://img.shields.io/badge/mods-4-f472b6?style=flat-square">
 </p>
 
 A collection of small mods for [Claude Code](https://claude.com/claude-code). Each mod is its own plugin, so you install only the ones you want.
@@ -15,6 +15,7 @@ Mods use Claude Code's hooks-module API, which is early access and may change be
 | Mod | What it does |
 | --- | --- |
 | [autoroute](mods/autoroute) | Picks the model and effort for each prompt, sends subagents to cheaper models, and keeps Fable and extra-usage spend in check. |
+| [prompt-upgrade](mods/prompt-upgrade) | Catches vague prompts, asks one quick multiple-choice question, rewrites the prompt with a working method, and lets you review it before it runs. |
 | [box-tools](mods/box-tools) | A `[ Tools ]` button at the right end of the prompt footer. Click it for a small box where you switch the model, the effort, and each of your daymods on or off. |
 | [pace-statusline](https://github.com/daydeda/claude-code-statusline) | A 4-line status line with limit bars, reset times and a pace prediction (`⚠ runs out today 4:19pm`) so you know before you hit the wall. Lives in its own repo. |
 
@@ -35,6 +36,7 @@ Or from a shell:
 ```bash
 claude plugin marketplace add daydeda/daymods
 claude plugin install autoroute@daymods
+claude plugin install prompt-upgrade@daymods
 claude plugin install box-tools@daymods
 claude plugin install pace-statusline@daymods
 ```
@@ -102,6 +104,49 @@ The plan check reads a local file the user can edit. It prevents accidental char
 - The keyword rules are a starting point and will misjudge some prompts. Use `!` overrides, or `/route status` to see why a route was chosen.
 - The model IDs are set in `mods/autoroute/hooks/route.ts`. If your Claude Code build uses different IDs, change them there.
 - The Haiku classifier sends the start of your prompt (up to 4000 characters) to Haiku through your own Claude session. Nothing goes to any other service.
+
+## ✨ prompt-upgrade
+
+Turns a vague prompt like "make a todo app" into a clear one before Claude starts, and lets you check it first.
+
+### How it works
+
+1. **Spot vague prompts.** Quick local rules let most prompts straight through: follow-ups like "yes" or "continue", slash commands, questions, and anything that names a file, function, error or URL. Short, broad prompts ("make it better", "build a website") count as vague. Borderline ones get a quick Haiku check, which can also decide the prompt is already clear. "fix it" right after an error is left alone, because the conversation already says what "it" is.
+2. **Ask one quick question.** Haiku drafts one question (two at most) about the decision that matters most: scope, target, expected result or a constraint. It appears in a **side panel** (see below). Pick one of up to three choices, type your own answer, or pick **Skip**. Press Esc to send your prompt untouched.
+3. **Rewrite.** Sonnet rewrites the prompt with your answer. It keeps your intent and adds the goal, where in the project, constraints and how to check it's done. It doesn't invent requirements: anything still open is left for Claude to pick a sensible default and say which.
+4. **Review.** The panel shows the rewritten prompt and its method:
+   - **Run it**: sends the rewrite.
+   - **Edit it myself**: puts the rewrite in the prompt box for you to change and send.
+   - **Use my original**: sends what you typed, unchanged.
+   - **Cancel**: sends nothing, and your text goes back in the prompt box.
+   - Or type what to change ("use Go", "smaller scope") in the field, and it rewrites again.
+
+The panel opens beside the transcript (or above the prompt) and each choice has a number hotkey (`1`-`3`, `s` for Skip; `1`-`4` in the review). It needs a terminal about 110 columns wide; on a narrower one it falls back to Claude Code's question dialog, with the rewrite shown inside the question. Set `ui` to `dialog` to always use the dialog.
+
+### Methods
+
+Each rewrite picks one working method and writes its step into the prompt:
+
+| Method | Idea | What the prompt asks for |
+| --- | --- | --- |
+| Direct | prompt engineering | A clear spec and nothing else, for small well-defined changes. |
+| Context first | context engineering | Read specific code, docs or data before deciding. |
+| Plan first | plan, then build | A short plan and a pause for your OK before editing, for big or open-ended work. |
+| Verify loop | loop engineering | A named check (tests, build, lint) and iterating until it passes, stopping after 3 failed tries. |
+| Make it a rule | harness engineering | Do the task now, then suggest making it permanent as a CLAUDE.md rule, hook, skill or `/loop`. |
+
+### Controls
+
+- **`/refine <prompt>`**: upgrade one prompt on demand, whatever the mode.
+- **`/refine auto|always|off`**: when it steps in. `auto` (default) handles vague prompts only, `always` every new task you type, `off` only `/refine <prompt>`.
+- **`/refine status`**: the mode, and why the last prompt was or wasn't upgraded.
+- **Options** (in `/config`): `mode`, `detector` (`rules+haiku` or `rules` alone), `ui` (`panel` or `dialog`), and `rewriteModel` (`sonnet` by default, or `haiku` or `opus`).
+
+### Notes and limits
+
+- It only steps in on prompts you type while Claude is idle. Prompts with images attached, prompts typed mid-turn, and prompts from other plugins go through untouched.
+- A leading `!opus`-style autoroute override is kept in front of the rewritten prompt.
+- An upgrade costs one small Haiku call, plus one Sonnet call if it rewrites, and adds a few seconds before the turn starts. The calls go through your own Claude session and send the prompt, the names of the top-level files in your project and the last few messages. Nothing goes to any other service.
 
 ## 🧰 box-tools
 

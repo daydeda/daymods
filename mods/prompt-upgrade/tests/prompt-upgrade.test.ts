@@ -1,0 +1,318 @@
+import type { On } from 'claude-code'
+import { describe, expect, mock, test } from 'claude-code/testing'
+import type { Engine } from 'claude-code/testing'
+
+import { judge, parseQuestions, parseRewrite, splitPrefix } from '../hooks/upgrade'
+
+type World = {
+  history?: { role: 'user' | 'assistant'; text: string }[]
+  haikuSays?: string
+  rewrites?: string[]
+  // One entry per dialog, in order: the label picked or text typed, or 'dismiss'.
+  dialogs?: string[]
+  // The side panel is drawn (a wide terminal); otherwise ui.open finds no surface.
+  hasPanel?: boolean
+}
+
+const QUESTION = JSON.stringify({
+  clear: false,
+  questions: [{
+    question: 'What kind of todo app?',
+    header: 'Scope',
+    options: ['CLI (Recommended)', 'Web app'],
+  }],
+})
+const rewriteOf = (prompt: string, method = 'plan') => JSON.stringify({ prompt, method, why: 'it is a new app' })
+
+// The engine beneath the plugin: models, the AskUserQuestion dialog, the session, and recorders.
+function world(on: On, w: World) {
+  const seen = {
+    text: undefined as string | undefined,
+    asked: [] as { question: string; header: string; options: { label: string }[] }[],
+    calls: [] as string[],
+    filled: undefined as string | undefined,
+    submitted: undefined as string | undefined,
+    closed: 0,
+  }
+  const rewrites = [...(w.rewrites ?? [rewriteOf('Build a CLI todo app. Plan first, then wait for my OK.')])]
+  const dialogs = [...(w.dialogs ?? [])]
+  const clock = mock.clock(on)
+  mock.store(on)
+  on('session.cwd', () => ({ value: '/w' }))
+  on('fs.list', () => ({ value: [{ name: 'package.json' }, { name: 'src' }, { name: '.git' }] }) as never)
+  on('session.messages', () => ({ value: (w.history ?? []).map(m => ({ ...m, toolUses: [] })) }) as never)
+  on('model.complete', ($, e) => {
+    const isAsk = e.system?.includes('sharpen') ?? false
+    seen.calls.push(isAsk ? 'ask' : 'rewrite')
+    const text = isAsk ? (w.haikuSays ?? QUESTION) : (rewrites.shift() ?? rewriteOf('fallback'))
+    return { value: { isAnswered: true, text, usage: { input_tokens: 1, output_tokens: 1 } } } as never
+  })
+  on('tool.call', { tool: 'AskUserQuestion' }, ($, e) => {
+    const input = e as unknown as { questions: { question: string; header: string; options: { label: string }[] }[] }
+    const q = input.questions[0]!
+    seen.asked.push(q)
+    const answer = dialogs.shift() ?? ''
+    if (answer === 'dismiss') return { deny: 'dismissed' }
+    return { result: { questions: input.questions, answers: { [q.question]: answer } } } as never
+  })
+  if (w.hasPanel) {
+    on('ui.open', () => ({ value: { isPlaced: true } }) as never)
+    on('ui.close', () => (seen.closed++, { value: undefined }))
+  }
+  on('command.register', ($, e) => ({ value: { command: e.name } }))
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.log', () => ({ value: undefined }))
+  on('prompt.fill', ($, e) => ((seen.filled = e.text), { isFilled: true, text: e.text }) as never)
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('prompt.submit', ($, e) => {
+    seen.text = e.text
+    if (e.origin.kind === 'plugin') seen.submitted = e.text
+    return { text: e.text }
+  })
+  return { seen, clock }
+}
+
+async function start($: Engine) {
+  await $.session.start({ cwd: '/w', surface: 'terminal', isInteractive: true })
+}
+
+async function submit($: Engine, text: string) {
+  return $.prompt.submit({ text, origin: { kind: 'composer' }, wait: false } as never)
+}
+
+describe('judge', () => {
+  test('rules sort prompts', () => {
+    expect(judge('make a todo app', 'auto', false).kind).toBe('vague')
+    expect(judge('make it better', 'auto', true).kind).toBe('vague')
+    expect(judge('fix it', 'auto', true).kind).toBe('skip')
+    expect(judge('continue', 'always', true).kind).toBe('skip')
+    expect(judge('/compact', 'auto', false).kind).toBe('skip')
+    expect(judge('fix the typo in README', 'auto', false).kind).toBe('clear')
+    expect(judge('rename getUser to fetchUser in src/api.ts', 'auto', false).kind).toBe('clear')
+    expect(judge('what does this repo do?', 'auto', false).kind).toBe('clear')
+    expect(judge('the login page and the session cookie disagree sometimes', 'auto', false).kind).toBe('unsure')
+    expect(judge('rename getUser to fetchUser in src/api.ts', 'always', false).kind).toBe('vague')
+  })
+
+  test('parsers accept the model replies and refuse junk', () => {
+    expect(parseQuestions(QUESTION)?.[0]?.options.length).toBe(2)
+    expect(parseQuestions('{"clear": true}')).toEqual([])
+    expect(parseQuestions('no idea')).toBeUndefined()
+    expect(parseRewrite(rewriteOf('x', 'loop'))?.method).toBe('loop')
+    expect(parseRewrite(rewriteOf('x', 'weird'))?.method).toBe('direct')
+    expect(splitPrefix('!opus make a game')).toEqual({ prefix: '!opus ', body: 'make a game' })
+  })
+})
+
+describe('auto mode', () => {
+  test('a clear prompt goes through with no model call', async ($, on) => {
+    const { seen } = world(on, {})
+    await start($)
+    await submit($, 'rename getUser to fetchUser in src/api.ts')
+    expect(seen.text).toBe('rename getUser to fetchUser in src/api.ts')
+    expect(seen.calls).toEqual([])
+  })
+
+  test('a vague prompt is asked about, rewritten, reviewed and run', async ($, on) => {
+    const { seen } = world(on, {
+      dialogs: ['CLI (Recommended)', 'Run it'],
+    })
+    await start($)
+    await submit($, 'make a todo app')
+    expect(seen.calls).toEqual(['ask', 'rewrite'])
+    expect(seen.asked[0]?.question).toBe('What kind of todo app?')
+    expect(seen.asked[0]?.options.map(o => o.label)).toEqual(['CLI (Recommended)', 'Web app', 'Skip'])
+    const review = seen.asked[1]
+    expect(review?.options.map(o => o.label)).toEqual(['Run it', 'Edit it myself', 'Use my original', 'Cancel'])
+    expect(review?.question).toContain('Build a CLI todo app')
+    expect(review?.question).toContain('Plan first')
+    expect(seen.text).toBe('Build a CLI todo app. Plan first, then wait for my OK.')
+  })
+
+  test('Haiku can call a borderline prompt clear', async ($, on) => {
+    const { seen } = world(on, { haikuSays: '{"clear": true}' })
+    await start($)
+    await submit($, 'the login page and the session cookie disagree sometimes')
+    expect(seen.calls).toEqual(['ask'])
+    expect(seen.text).toBe('the login page and the session cookie disagree sometimes')
+  })
+
+  test('dismissing the question sends the prompt as typed', async ($, on) => {
+    const { seen } = world(on, { dialogs: ['dismiss'] })
+    await start($)
+    await submit($, 'make a todo app')
+    expect(seen.calls).toEqual(['ask'])
+    expect(seen.text).toBe('make a todo app')
+  })
+
+  test('a skipped question still gets a rewrite', async ($, on) => {
+    const { seen } = world(on, { dialogs: ['Skip', 'Run it'] })
+    await start($)
+    await submit($, 'make a todo app')
+    expect(seen.calls).toEqual(['ask', 'rewrite'])
+    expect(seen.text).toContain('CLI todo app')
+  })
+
+  test('typing under Other revises the rewrite', async ($, on) => {
+    const { seen } = world(on, {
+      rewrites: [rewriteOf('Build a CLI todo app.'), rewriteOf('Build a CLI todo app in Go.', 'direct')],
+      dialogs: ['CLI (Recommended)', 'use Go', 'Run it'],
+    })
+    await start($)
+    await submit($, 'make a todo app')
+    expect(seen.calls).toEqual(['ask', 'rewrite', 'rewrite'])
+    expect(seen.text).toBe('Build a CLI todo app in Go.')
+  })
+
+  test('"Use my original" sends what was typed', async ($, on) => {
+    const { seen } = world(on, { dialogs: ['Web app', 'Use my original'] })
+    await start($)
+    await submit($, 'make a todo app')
+    expect(seen.text).toBe('make a todo app')
+  })
+
+  test('"Edit it myself" drops the prompt and fills the box', async ($, on) => {
+    const { seen, clock } = world(on, { dialogs: ['Web app', 'Edit it myself'] })
+    await start($)
+    const r = await submit($, 'make a todo app')
+    expect('drop' in r && r.drop).toContain('prompt box')
+    await clock.advance(100)
+    expect(seen.filled).toBe('Build a CLI todo app. Plan first, then wait for my OK.')
+  })
+
+  test('what is sent from a refilled box is not upgraded again', async ($, on) => {
+    const { seen, clock } = world(on, { dialogs: ['Web app', 'Edit it myself'] })
+    await start($)
+    await $.command.run({ command: 'refine', args: 'always', origin: { kind: 'composer' } } as never)
+    await submit($, 'make a todo app')
+    await clock.advance(100)
+    await submit($, 'Build a web todo app.')
+    expect(seen.calls).toEqual(['ask', 'rewrite'])
+    expect(seen.text).toBe('Build a web todo app.')
+  })
+
+  test('an autoroute override is kept in front of the rewrite', async ($, on) => {
+    const { seen } = world(on, { dialogs: ['Web app', 'Run it'] })
+    await start($)
+    await submit($, '!opus make a todo app')
+    expect(seen.text?.startsWith('!opus Build')).toBe(true)
+  })
+
+  test('"fix it" mid-conversation is left alone', async ($, on) => {
+    const { seen } = world(on, { history: [{ role: 'user', text: 'run the tests' }, { role: 'assistant', text: '3 failed' }] })
+    await start($)
+    await submit($, 'fix it')
+    expect(seen.calls).toEqual([])
+  })
+})
+
+describe('/refine', () => {
+  test('off stops auto mode', async ($, on) => {
+    const { seen } = world(on, {})
+    await start($)
+    await $.command.run({ command: 'refine', args: 'off', origin: { kind: 'composer' } } as never)
+    await submit($, 'make a todo app')
+    expect(seen.calls).toEqual([])
+  })
+
+  test('/refine <prompt> runs the flow and submits the result', async ($, on) => {
+    const { seen, clock } = world(on, {
+      haikuSays: '{"clear": true}',
+      dialogs: ['Run it'],
+    })
+    await start($)
+    const r = await $.command.run({ command: 'refine', args: 'rename getUser in src/api.ts', origin: { kind: 'composer' } } as never)
+    await clock.settle()
+    expect(seen.calls).toEqual(['ask', 'rewrite'])
+    expect((r as { text?: string }).text).toContain('sending')
+    expect(seen.submitted).toContain('CLI todo app')
+  })
+})
+
+const PANE_PROPS = { title: 'Refine prompt', isFocused: true, bodyColumns: 60, placement: 'dock' } as never
+
+describe('side panel', () => {
+  async function mountPane($: Engine, surface: 'terminal' | 'desktop' = 'terminal') {
+    return $.ui.mount({ plugin: 'prompt-upgrade', surface, component: 'Pane', requestId: 'refine', props: PANE_PROPS })
+  }
+
+  test('the question and the review are answered with buttons in the panel', async ($, on) => {
+    const { seen, clock } = world(on, { hasPanel: true })
+    await start($)
+    const r = await submit($, 'make a todo app')
+    expect('drop' in r && r.drop).toContain('side panel')
+    await clock.advance(10)
+
+    const ui = await mountPane($)
+    expect(await ui.find({ type: 'Text', text: /What kind of todo app/ })).toBeDefined()
+    expect(await ui.find({ key: 'opt1' })).toBeDefined()
+    await ui.press({ key: 'opt0' })
+    await clock.advance(10)
+
+    expect(await ui.find({ type: 'Text', text: /Build a CLI todo app/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Plan first/ })).toBeDefined()
+    await ui.press({ key: 'run' })
+    await clock.advance(10)
+
+    expect(seen.calls).toEqual(['ask', 'rewrite'])
+    expect(seen.asked).toEqual([])
+    expect(seen.submitted).toBe('Build a CLI todo app. Plan first, then wait for my OK.')
+    expect(seen.closed).toBe(1)
+    await ui.unmount()
+  })
+
+  test('typing in the panel revises the rewrite', async ($, on) => {
+    const { seen, clock } = world(on, {
+      hasPanel: true,
+      rewrites: [rewriteOf('Build a CLI todo app.'), rewriteOf('Build a CLI todo app in Go.', 'direct')],
+    })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await mountPane($)
+    await ui.input({ key: 'own', text: 'a CLI one' })
+    await clock.advance(10)
+    await ui.input({ key: 'change', text: 'use Go' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: /in Go/ })).toBeDefined()
+    await ui.press({ key: 'run' })
+    await clock.advance(10)
+    expect(seen.submitted).toBe('Build a CLI todo app in Go.')
+    await ui.unmount()
+  })
+
+  test('cancel puts the original back in the prompt box', async ($, on) => {
+    const { seen, clock } = world(on, { hasPanel: true })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await mountPane($)
+    await ui.press({ key: 'skip' })
+    await clock.advance(10)
+    await ui.press({ key: 'cancel' })
+    await clock.advance(100)
+    expect(seen.filled).toBe('make a todo app')
+    expect(seen.submitted).toBeUndefined()
+    await ui.unmount()
+  })
+
+  test('the panel works on the desktop too', async ($, on) => {
+    const { clock } = world(on, { hasPanel: true })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await mountPane($, 'desktop')
+    expect(await ui.find({ key: 'opt0' })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('a terminal too narrow for a panel falls back to the dialog', async ($, on) => {
+    const { seen } = world(on, { dialogs: ['CLI (Recommended)', 'Run it'] })
+    on('ui.open', () => ({ value: { isPlaced: false, reason: 'narrow' } }) as never)
+    on('ui.close', () => ({ value: undefined }))
+    await start($)
+    await submit($, 'make a todo app')
+    expect(seen.asked.length).toBe(2)
+    expect(seen.text).toContain('CLI todo app')
+  })
+})

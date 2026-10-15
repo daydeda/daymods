@@ -1,0 +1,55 @@
+{
+  "name": "prompt-upgrade",
+  "version": "0.1.0",
+  "description": "Catches vague prompts, asks one quick multiple-choice question, rewrites the prompt with a working method, and lets you review it before it runs.",
+  "author": {
+    "name": "daydeda"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/daydeda/daymods",
+  "userConfig": {
+    "mode": {
+      "type": "string",
+      "title": "When to step in",
+      "description": "auto: only prompts that look vague. always: every new task you type. off: only when you run /refine <prompt>.",
+      "options": [
+        "auto",
+        "always",
+        "off"
+      ],
+      "default": "auto"
+    },
+    "detector": {
+      "type": "string",
+      "title": "Vague-prompt detector",
+      "description": "rules+haiku: keyword rules, and a quick Haiku check for borderline prompts. rules: keyword rules alone, so borderline prompts go through untouched.",
+      "options": [
+        "rules+haiku",
+        "rules"
+      ],
+      "default": "rules+haiku"
+    },
+    "rewriteModel": {
+      "type": "string",
+      "title": "Rewrite model",
+      "description": "The model that writes the upgraded prompt. The clarifying question is always drafted by Haiku.",
+      "options": [
+        "sonnet",
+        "haiku",
+        "opus"
+      ],
+      "default": "sonnet"
+    },
+    "ui": {
+      "type": "string",
+      "title": "Where the questions show",
+      "description": "panel: a side panel (falls back to a dialog if the terminal is too narrow for one). dialog: Claude Code's question dialog above the prompt.",
+      "options": [
+        "panel",
+        "dialog"
+      ],
+      "default": "panel"
+    }
+  },
+  "types": "./types/index.d.ts"
+}

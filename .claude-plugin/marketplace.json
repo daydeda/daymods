@@ -11,6 +11,11 @@
       "description": "Picks the model and effort per prompt, routes subagents to cheap models, and gates Fable and extra-usage spend."
     },
     {
+      "name": "prompt-upgrade",
+      "source": "./mods/prompt-upgrade",
+      "description": "Catches vague prompts, asks one quick multiple-choice question, rewrites the prompt with a working method, and lets you review it before it runs."
+    },
+    {
       "name": "box-tools",
       "source": "./mods/box-tools",
       "description": "A Tools button at the right end of the prompt footer that opens a small box to switch the model, the effort and your daymods on or off."
