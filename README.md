@@ -1,10 +1,16 @@
-# daymods
+<p align="center"><img src="images/banner.svg" alt="daymods: small mods for Claude Code" width="100%"></p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-34d399?style=flat-square"></a>
+  <img alt="Claude Code 2.1.300+" src="https://img.shields.io/badge/Claude%20Code-2.1.300%2B-818cf8?style=flat-square">
+  <img alt="mods" src="https://img.shields.io/badge/mods-2-f472b6?style=flat-square">
+</p>
 
 A collection of small mods for [Claude Code](https://claude.com/claude-code). Each mod is its own plugin, so you install only the ones you want.
 
 Mods use Claude Code's hooks-module API, which is early access and may change between releases. They were built and tested on Claude Code 2.1.300.
 
-## Mods
+## 🧩 Mods
 
 | Mod | What it does |
 | --- | --- |
@@ -13,7 +19,7 @@ Mods use Claude Code's hooks-module API, which is early access and may change be
 
 More mods will be added here as they are ready.
 
-## Install
+## 📦 Install
 
 Add the marketplace once, then install any mod from it.
 
@@ -35,9 +41,11 @@ Answer `y` when asked to add the marketplace and pick a scope. The mod is active
 
 To remove one: `claude plugin uninstall autoroute`.
 
-## autoroute
+## 🧭 autoroute
 
 Routes each prompt to a suitable model and effort, so small jobs stop burning Opus tokens and big jobs get a plan.
+
+<p align="center"><img src="images/autoroute.svg" alt="autoroute choosing Haiku, Sonnet or Opus for four different prompts" width="100%"></p>
 
 ### How it works
 
@@ -55,6 +63,17 @@ Routes each prompt to a suitable model and effort, so small jobs stop burning Op
 2. **Delegate large work.** For the large tier, autoroute tells the model to work as a pipeline: Explore subagents map the code, a plan is written to a file, then a Sonnet subagent implements it. Other tiers are told to work directly.
 
 3. **Route subagents.** Explore agents run on Haiku at low effort, Plan agents on Opus, and any other subagent with no model set runs on Sonnet.
+
+```mermaid
+flowchart LR
+  A([your prompt]) --> B{rules}
+  B -->|clear| D[tier]
+  B -->|unclear| C[Haiku classifier] --> D
+  D --> E{plan and spend gate}
+  E -->|Fable, not Max| F[Opus]
+  E -->|limit near, extra usage on| G[Sonnet cap]
+  E -->|ok| H[chosen model]
+```
 
 ### Two spend rules
 
@@ -80,7 +99,7 @@ The plan check reads a local file the user can edit. It prevents accidental char
 - The model IDs are set in `mods/autoroute/hooks/route.ts`. If your Claude Code build uses different IDs, change them there.
 - The Haiku classifier sends the start of your prompt (up to 4000 characters) to Haiku through your own Claude session. Nothing goes to any other service.
 
-## Development
+## 🛠 Development
 
 Each mod lives in `mods/<name>/` with the standard layout:
 
@@ -101,6 +120,6 @@ claude plugin test mods/autoroute
 
 Try one without installing it: `claude --plugin-dir mods/autoroute`.
 
-## License
+## 📄 License
 
 [MIT](LICENSE)

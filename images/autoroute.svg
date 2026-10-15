@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 250" role="img" aria-label="autoroute choosing a model for four different prompts">
+  <style>
+    text{font:16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .p{fill:#e2e8f0}.dim{fill:#94a3b8}.k{fill:#60a5fa}
+    .g{fill:#34d399}.y{fill:#fbbf24}.r{fill:#f87171}.v{fill:#c084fc}
+    .f{opacity:0;animation:show 20s infinite}
+    .f2{animation-delay:5s}.f3{animation-delay:10s}.f4{animation-delay:15s}
+    @keyframes show{0%{opacity:0}3%,22%{opacity:1}25%,100%{opacity:0}}
+    .bar{fill:#f472b6;animation:prog 5s linear infinite;transform-origin:left}
+    @keyframes prog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  </style>
+  <rect width="900" height="250" rx="14" fill="#0f172a"/>
+  <circle cx="26" cy="24" r="6" fill="#f87171"/><circle cx="46" cy="24" r="6" fill="#fbbf24"/><circle cx="66" cy="24" r="6" fill="#34d399"/>
+  <text class="dim" x="90" y="29">autoroute</text>
+  <rect x="0" y="46" width="900" height="2" fill="#1e293b"/><rect class="bar" x="0" y="46" width="900" height="2"/>
+  <g class="f"><text class="p" x="30" y="100">&gt; fix the typo in the README</text>
+    <text class="dim" x="30" y="150">autoroute:</text><text class="g" x="125" y="150">Haiku · low</text><text class="dim" x="260" y="150">· "typo" (rules)</text>
+    <text class="dim" x="30" y="200">cheap and instant, no Opus needed</text></g>
+  <g class="f f2"><text class="p" x="30" y="100">&gt; add a --verbose flag to the CLI</text>
+    <text class="dim" x="30" y="150">autoroute:</text><text class="y" x="125" y="150">Sonnet · medium</text><text class="dim" x="305" y="150">· "add" (rules)</text>
+    <text class="dim" x="30" y="200">a normal feature, balanced model</text></g>
+  <g class="f f3"><text class="p" x="30" y="100">&gt; debug the race condition in the queue</text>
+    <text class="dim" x="30" y="150">autoroute:</text><text class="r" x="125" y="150">Opus · high</text><text class="dim" x="255" y="150">· "debug" (rules)</text>
+    <text class="dim" x="30" y="200">tricky work gets the strong model</text></g>
+  <g class="f f4"><text class="p" x="30" y="100">&gt; migrate the whole codebase to TypeScript</text>
+    <text class="dim" x="30" y="150">autoroute:</text><text class="r" x="125" y="150">Opus · high</text><text class="dim" x="255" y="150">· "migrate" (rules)</text>
+    <text class="v" x="30" y="200">plan on Opus → Haiku explores → Sonnet implements</text></g>
+</svg>

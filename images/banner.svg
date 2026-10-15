@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" role="img" aria-label="daymods: small mods for Claude Code">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e1b4b"/><stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#f472b6"><animate attributeName="stop-color" values="#f472b6;#60a5fa;#34d399;#fbbf24;#f472b6" dur="8s" repeatCount="indefinite"/></stop>
+      <stop offset="1" stop-color="#60a5fa"><animate attributeName="stop-color" values="#60a5fa;#34d399;#fbbf24;#f472b6;#60a5fa" dur="8s" repeatCount="indefinite"/></stop>
+    </linearGradient>
+  </defs>
+  <style>
+    .t{font:700 84px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .s{font:400 22px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#cbd5e1}
+    .d{fill:#818cf8;opacity:.0;animation:float 6s ease-in-out infinite}
+    .d:nth-of-type(2){animation-delay:-1.5s}.d:nth-of-type(3){animation-delay:-3s}.d:nth-of-type(4){animation-delay:-4.5s}
+    @keyframes float{0%,100%{opacity:.15;transform:translateY(8px)}50%{opacity:.7;transform:translateY(-8px)}}
+    .c{animation:blink 1s steps(1) infinite;fill:#f472b6}
+    @keyframes blink{50%{opacity:0}}
+  </style>
+  <rect width="900" height="220" rx="18" fill="url(#bg)"/>
+  <circle class="d" cx="90" cy="50" r="6"/><circle class="d" cx="800" cy="70" r="8"/>
+  <circle class="d" cx="720" cy="170" r="5"/><circle class="d" cx="160" cy="175" r="7"/>
+  <text class="t" x="60" y="115" fill="url(#ink)">daymods</text>
+  <rect class="c" x="428" y="55" width="14" height="70" rx="2"/>
+  <text class="s" x="62" y="165">small mods for Claude Code. install only what you want.</text>
+</svg>
