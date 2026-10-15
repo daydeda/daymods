@@ -10,6 +10,8 @@ Mods use Claude Code's hooks-module API, which is early access and may change be
 | --- | --- |
 | [autoroute](mods/autoroute) | Picks the model and effort for each prompt, sends subagents to cheaper models, and keeps Fable and extra-usage spend in check. |
 
+| [pace-statusline](https://github.com/daydeda/claude-code-statusline) | A 4-line status line with limit bars, reset times and a pace prediction (`⚠ runs out today 4:19pm`) so you know before you hit the wall. Lives in its own repo. |
+
 More mods will be added here as they are ready.
 
 ## Install
@@ -27,6 +29,7 @@ Or from a shell:
 ```bash
 claude plugin marketplace add daydeda/daymods
 claude plugin install autoroute@daymods
+claude plugin install pace-statusline@daymods
 ```
 
 Answer `y` when asked to add the marketplace and pick a scope. The mod is active right away. Mods installed at the user scope load in every later session.

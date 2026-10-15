@@ -9,6 +9,14 @@
       "name": "autoroute",
       "source": "./mods/autoroute",
       "description": "Picks the model and effort per prompt, routes subagents to cheap models, and gates Fable and extra-usage spend."
+    },
+    {
+      "name": "pace-statusline",
+      "source": {
+        "source": "github",
+        "repo": "daydeda/claude-code-statusline"
+      },
+      "description": "A 4-line status line with limit bars, reset times and a pace prediction that tells you if you'll run out before the reset. 6 themes."
     }
   ]
 }
