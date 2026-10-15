@@ -1,6 +1,6 @@
 {
   "name": "prompt-upgrade",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Catches vague prompts, asks one quick multiple-choice question, rewrites the prompt with a working method, and lets you review it before it runs.",
   "author": {
     "name": "daydeda"
