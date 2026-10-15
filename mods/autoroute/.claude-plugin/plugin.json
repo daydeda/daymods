@@ -18,6 +18,16 @@
       ],
       "default": "rules+haiku"
     },
+    "display": {
+      "type": "string",
+      "title": "Where the route shows",
+      "description": "statusline: write the route for your status line script to show inline (see the README). line: show autoroute's own extra status row instead.",
+      "options": [
+        "statusline",
+        "line"
+      ],
+      "default": "statusline"
+    },
     "spendGuardPercent": {
       "type": "number",
       "title": "Spend guard threshold (%)",

@@ -11,7 +11,7 @@ type World = {
 
 // The engine beneath the plugin: a login record, usage, Haiku, and recorders.
 function world(on: On, w: World) {
-  const seen: { step?: TurnStepInput; spawn?: AgentSpawnInput; context?: readonly string[]; text?: string; toasts: string[] } = { toasts: [] }
+  const seen: { step?: TurnStepInput; spawn?: AgentSpawnInput; context?: readonly string[]; text?: string; state?: string; toasts: string[] } = { toasts: [] }
   mock.env(on, { HOME: '/home/t' })
   mock.store(on)
   on('fs.read', () => {
@@ -24,6 +24,7 @@ function world(on: On, w: World) {
   }) as never)
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('ui.status', () => ({ value: undefined }))
+  on('fs.write', ($, e) => (seen.state = e.text, { value: undefined }))
   on('ui.toast', ($, e) => (seen.toasts.push(e.text), { value: undefined }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('prompt.submit', ($, e) => ((seen.text = e.text), (seen.context = e.context), { text: e.text, context: e.context }))
@@ -166,5 +167,16 @@ describe('spend guard', () => {
     await submit($, 'migrate the whole codebase to TypeScript')
     await step($)
     expect(seen.step?.model).toBe('claude-opus-5-5')
+  })
+})
+
+describe('statusline state', () => {
+  test('the route is written for the statusline to show', async ($, on) => {
+    const seen = world(on, { account: PRO })
+    await start($)
+    await submit($, 'fix a typo in the readme')
+    await new Promise(r => setTimeout(r, 10))
+    expect(seen.state).toContain('model=Haiku')
+    expect(seen.state).toContain('effort=low')
   })
 })

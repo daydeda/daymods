@@ -86,11 +86,13 @@ The plan check reads a local file the user can edit. It prevents accidental char
 
 ### Controls
 
-- **Status line:** shows the current route, for example `autoroute: Haiku · low · "typo" (rules)`, plus any downgrade notes or spend warnings.
+- **Status line:** by default autoroute adds no row of its own. It writes the current route to `~/.claude/autoroute.state`, and a status line script can show it inline. [pace-statusline](https://github.com/daydeda/claude-code-statusline) does: `Opus ▶ high ⇢ Haiku·low ▶ ⌂ daymods`, plus a `⚠` note for downgrades or spend warnings. The `⇢` part is hidden once the running model matches the route. Set `display` to `line` to get autoroute's own row instead, for example `autoroute: Haiku · low · "typo" (rules)`.
+- **Compact status line:** with pace-statusline, `STATUSLINE_COMPACT=1` folds ctx, 5-hour, weekly and session stats into one row with short bars. The reset countdown shows only past 50% used.
 - **Override one prompt:** start a message with `!haiku`, `!sonnet`, `!opus`, `!fable` or `!max`. `!auto` routes normally.
 - **`/route on|off|status`:** turn routing on or off, or show the last route, your plan, and the spend guard state.
 - **Options** (in `/config`):
   - `classifier`: `rules+haiku` (default) or `rules` only. Rules-only makes no model call.
+  - `display`: `statusline` (default) writes the route for your status line to show; `line` shows autoroute's own row.
   - `spendGuardPercent`: threshold for the spend guard, default `90`.
 
 ### Notes and limits

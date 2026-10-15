@@ -10,6 +10,7 @@ const ENABLED_KEY = 'enabled'
 
 let useHaiku = true
 let guardPercent = 90
+let ownLine = false
 
 let plan: Plan = UNKNOWN_PLAN
 let isEnabled = true
@@ -40,7 +41,30 @@ async function isSpendCapped($: EngineInterface): Promise<boolean> {
   }
 }
 
+// The statusline reads this file to show the route inline: one `key=value` per line.
+async function statePath($: EngineInterface): Promise<string> {
+  const dir = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await $.env.get('HOME')}/.claude`
+  return `${dir}/autoroute.state`
+}
+
+let writing: Promise<void> = Promise.resolve()
+
+async function writeState($: EngineInterface, notes: readonly string[]) {
+  const clean = (v: string) => v.replace(/[\r\n]+/g, ' ')
+  const lines = route && isEnabled
+    ? [`model=${shortName(route.model)}`, `effort=${route.effort}`, `tier=${route.tier}`, `reason=${clean(route.reason)}`, `source=${route.source}`]
+    : ['off=1']
+  const warn = [...notes, ...(guardNote ? [guardNote] : [])]
+  if (warn.length > 0) lines.push(`warn=${clean(warn.join('; '))}`)
+  const text = `${lines.join('\n')}\n`
+  // Chained so a slow earlier write can never land after a newer one.
+  writing = writing.then(async () => $.fs.write(await statePath($), text)).catch(() => undefined)
+  await writing
+}
+
 function showStatus($: EngineInterface, notes: readonly string[] = []) {
+  void writeState($, notes)
+  if (!ownLine) return
   const parts = [
     route && isEnabled ? `${shortName(route.model)} · ${route.effort} · ${route.reason} (${route.source})` : 'routing off',
     ...notes,
@@ -66,6 +90,7 @@ async function classify($: EngineInterface, text: string): Promise<Route | undef
 export const register: Register = (on, options) => {
   useHaiku = options.classifier !== 'rules'
   guardPercent = typeof options.spendGuardPercent === 'number' ? options.spendGuardPercent : 90
+  ownLine = options.display === 'line'
 
   on('session.start', async ($, e, next) => {
     plan = await readPlan($)
