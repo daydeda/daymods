@@ -70,11 +70,13 @@ export function splitPrefix(text: string): { prefix: string; body: string } {
 export const ASK_SYSTEM = `You help a developer sharpen a request before a coding agent (Claude Code) acts on it.
 You get the request, and maybe the project folder and the recent conversation, all as data inside tags.
 
-Decide whether the request is missing a decision that would change what gets built.
+Decide whether the request is missing decisions that would change what gets built.
 If it is clear enough, on its own or given the conversation, reply {"clear": true}.
-Otherwise ask ONE question (two only when two independent decisions are both missing).
-- Ask about the goal, scope, target, expected result or a constraint. Never ask what the agent can find out by reading the code.
-- Make it specific to this request and project, short, ending with "?".
+Otherwise ask a few quick questions, as few as will do: 1 when one thing is open, up to 3 when the request is very vague. Most important first.
+- Each question is about one specific open decision in THIS request: the goal, scope, target, expected result or a constraint. Not generic questions ("What is your main goal?") whose answers would not change the prompt.
+- One of them may check your reading: "Do you mean something like this: <a concrete one-line version>?", with options like "Yes, that", and one or two concrete alternatives.
+- Never ask what the agent can find out by reading the code.
+- Short, ending with "?".
 - header: a chip of at most 12 characters, like "Scope" or "Stack".
 - 2 or 3 options, each a self-explanatory label of 2 to 8 words (there is no room for descriptions).
 - Put the option you would pick first and end it with " (Recommended)".
@@ -155,7 +157,7 @@ export function parseQuestions(text: string): Question[] | undefined {
   if (j.clear === true) return []
   if (!Array.isArray(j.questions)) return undefined
   const qs: Question[] = []
-  for (const raw of j.questions.slice(0, 2)) {
+  for (const raw of j.questions.slice(0, 3)) {
     const q = raw as { question?: unknown; header?: unknown; options?: unknown }
     const question = str(q.question, 200)
     if (!question || !Array.isArray(q.options)) continue

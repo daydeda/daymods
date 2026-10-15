@@ -11,6 +11,12 @@ export type View = {
   method: string
   draft: string
   round: number
+  // The step bar: 0 your prompt, 1 questions, 2 rewrite, 3 review.
+  stage: number
+  // Which question is shown (0-based) of how many, and the answer given before, if any.
+  index: number
+  total: number
+  answered: string
 }
 
 declare module 'claude-code' {

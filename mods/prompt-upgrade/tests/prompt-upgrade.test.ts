@@ -22,6 +22,14 @@ const QUESTION = JSON.stringify({
     options: ['CLI (Recommended)', 'Web app'],
   }],
 })
+const THREE = JSON.stringify({
+  clear: false,
+  questions: [
+    { question: 'Where should it run?', header: 'Target', options: ['Terminal (Recommended)', 'Web page'] },
+    { question: 'Where are todos saved?', header: 'Storage', options: ['A JSON file', 'Nowhere'] },
+    { question: 'Do you mean something like this: a tiny CLI?', header: 'Check', options: ['Yes, that', 'Bigger than that'] },
+  ],
+})
 const rewriteOf = (prompt: string, method = 'plan') => JSON.stringify({ prompt, method, why: 'it is a new app' })
 
 // The engine beneath the plugin: models, the AskUserQuestion dialog, the session, and recorders.
@@ -33,6 +41,7 @@ function world(on: On, w: World) {
     filled: undefined as string | undefined,
     submitted: undefined as string | undefined,
     closed: 0,
+    columns: undefined as number | undefined,
   }
   const rewrites = [...(w.rewrites ?? [rewriteOf('Build a CLI todo app. Plan first, then wait for my OK.')])]
   const dialogs = [...(w.dialogs ?? [])]
@@ -56,7 +65,7 @@ function world(on: On, w: World) {
     return { result: { questions: input.questions, answers: { [q.question]: answer } } } as never
   })
   if (w.hasPanel) {
-    on('ui.open', () => ({ value: { isPlaced: true } }) as never)
+    on('ui.open', ($, e) => ((seen.columns = (e as { columns?: number }).columns), { value: { isPlaced: true } }) as never)
     on('ui.close', () => (seen.closed++, { value: undefined }))
   }
   on('command.register', ($, e) => ({ value: { command: e.name } }))
@@ -224,7 +233,7 @@ describe('/refine', () => {
     const r = await $.command.run({ command: 'refine', args: 'rename getUser in src/api.ts', origin: { kind: 'composer' } } as never)
     await clock.settle()
     expect(seen.calls).toEqual(['ask', 'rewrite'])
-    expect((r as { text?: string }).text).toContain('sending')
+    expect((r as { text?: string }).text).toContain('Sending')
     expect(seen.submitted).toContain('CLI todo app')
   })
 })
@@ -261,7 +270,11 @@ describe('side panel', () => {
     await ui.unmount()
   })
 
-  test('typing in the panel revises the rewrite', async ($, on) => {
+  async function typeInto($: Engine, ui: Awaited<ReturnType<typeof mountPane>>, key: string, text: string) {
+    for (const ch of text) await ui.key({ key: ch, in: key })
+  }
+
+  test('typing in the panel\'s own text area answers the question and asks for a change', async ($, on) => {
     const { seen, clock } = world(on, {
       hasPanel: true,
       rewrites: [rewriteOf('Build a CLI todo app.'), rewriteOf('Build a CLI todo app in Go.', 'direct')],
@@ -270,14 +283,40 @@ describe('side panel', () => {
     await submit($, 'make a todo app')
     await clock.advance(10)
     const ui = await mountPane($)
-    await ui.input({ key: 'own', text: 'a CLI one' })
+    await typeInto($, ui, 'editor-ask-0-0', 'a CLI')
     await clock.advance(10)
-    await ui.input({ key: 'change', text: 'use Go' })
+    expect(await ui.find({ type: 'Text', text: 'a CLI▌', in: 'editor-ask-0-0' })).toBeDefined()
+    await ui.key({ key: 'backspace', in: 'editor-ask-0-0' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: 'a CL▌', in: 'editor-ask-0-0' })).toBeDefined()
+    await ui.key({ key: 'I', in: 'editor-ask-0-0' })
+    await ui.key({ key: 'return', in: 'editor-ask-0-0' })
+    await clock.advance(10)
+    expect(seen.asked).toEqual([])
+    expect(await ui.find({ type: 'Text', text: /Upgraded prompt/ })).toBeDefined()
+    await typeInto($, ui, 'editor-review-0-0', 'use Go')
+    await ui.key({ key: 'return', in: 'editor-review-0-0' })
     await clock.advance(10)
     expect(await ui.find({ type: 'Text', text: /in Go/ })).toBeDefined()
     await ui.press({ key: 'run' })
     await clock.advance(10)
     expect(seen.submitted).toBe('Build a CLI todo app in Go.')
+    await ui.unmount()
+  })
+
+  test('a long answer is shown once, in full, wrapped, with no shortened copy', async ($, on) => {
+    const { clock } = world(on, { hasPanel: true })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await mountPane($)
+    const long = 'a command line todo app that saves to a JSON file and syncs with my phone every night'
+    await typeInto($, ui, 'editor-ask-0-0', long)
+    await clock.advance(10)
+    expect((await ui.findAll({ type: 'Text', text: long, in: 'editor-ask-0-0' })).length).toBe(1)
+    expect((await ui.findAll({ type: 'Text', text: long })).length).toBe(0) // nowhere else in the panel
+    expect((await ui.find({ type: 'Text', text: long, in: 'editor-ask-0-0' }))?.props.wrap).toBe('wrap')
+    expect((await ui.findAll({ type: 'Input' })).length).toBe(0)
     await ui.unmount()
   })
 
@@ -314,5 +353,174 @@ describe('side panel', () => {
     await submit($, 'make a todo app')
     expect(seen.asked.length).toBe(2)
     expect(seen.text).toContain('CLI todo app')
+  })
+})
+
+describe('step by step in the panel', () => {
+  async function open($: Engine) {
+    return $.ui.mount({ plugin: 'prompt-upgrade', surface: 'terminal', component: 'Pane', requestId: 'refine', props: PANE_PROPS })
+  }
+
+  test('up to three questions, with Back keeping the earlier answer', async ($, on) => {
+    const { seen, clock } = world(on, { hasPanel: true, haikuSays: THREE })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await open($)
+    expect(await ui.find({ type: 'Text', text: /Questions 1\/3/ })).toBeDefined()
+    expect(await ui.find({ key: 'back' })).toBeUndefined()
+    await ui.press({ key: 'opt1' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: /Where are todos saved/ })).toBeDefined()
+    await ui.press({ key: 'back' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: /Where should it run/ })).toBeDefined()
+    expect(await ui.find({ text: /your answer/ })).toBeDefined()
+    await ui.press({ key: 'opt0' })
+    await clock.advance(10)
+    await ui.press({ key: 'rest' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: /Upgraded prompt/ })).toBeDefined()
+    await ui.press({ key: 'run' })
+    await clock.advance(10)
+    expect(seen.calls).toEqual(['ask', 'rewrite'])
+    expect(seen.submitted).toContain('CLI todo app')
+    await ui.unmount()
+  })
+
+  test('the last question has no "skip the rest"', async ($, on) => {
+    const { clock } = world(on, { hasPanel: true })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await open($)
+    expect(await ui.find({ key: 'rest' })).toBeUndefined()
+    expect(await ui.find({ key: 'type' })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('Back from the review returns to the questions and rewrites again', async ($, on) => {
+    const { seen, clock } = world(on, {
+      hasPanel: true,
+      rewrites: [rewriteOf('Build a CLI todo app.'), rewriteOf('Build a web todo app.')],
+    })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await open($)
+    await ui.press({ key: 'opt0' })
+    await clock.advance(10)
+    await ui.press({ key: 'back' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: /What kind of todo app/ })).toBeDefined()
+    await ui.press({ key: 'opt1' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: /web todo app/ })).toBeDefined()
+    await ui.press({ key: 'run' })
+    await clock.advance(10)
+    expect(seen.calls).toEqual(['ask', 'rewrite', 'rewrite'])
+    expect(seen.submitted).toBe('Build a web todo app.')
+    await ui.unmount()
+  })
+})
+
+describe('step bar', () => {
+  test('finished, current and later steps look different', async ($, on) => {
+    const { clock } = world(on, { hasPanel: true, haikuSays: THREE })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await $.ui.mount({ plugin: 'prompt-upgrade', surface: 'terminal', component: 'Pane', requestId: 'refine', props: PANE_PROPS })
+    const done = await ui.find({ type: 'Text', text: /Your prompt/ })
+    const now = await ui.find({ type: 'Text', text: /Questions 1/ })
+    const later = await ui.find({ type: 'Text', text: /Review/ })
+    expect(done?.text).toContain('✓ Your prompt')
+    expect(done?.props.color).toBe('green')
+    expect(done?.props.bold).toBeFalsy()
+    expect(now?.text).toContain('● Questions 1/3')
+    expect(now?.props.bold).toBe(true)
+    expect(now?.props.color).toBe('claude')
+    expect(later?.text).toContain('○ Review')
+    expect(later?.props.dimColor).toBe(true)
+    expect(later?.props.color).toBeUndefined()
+    await ui.unmount()
+  })
+})
+
+describe('panel size and question progress', () => {
+  test('the panel opens at about 60% of the terminal width, and 100 when unknown', async ($, on) => {
+    const { seen, clock } = world(on, { hasPanel: true })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    expect(seen.columns).toBe(100)
+    await $.command.run({ command: 'refine', args: 'status', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 200 } } as never)
+    await submit($, 'make a game')
+    await clock.advance(10)
+    expect(seen.columns).toBe(100)
+  })
+
+  test('each question shows "QUESTION n OF m" with one dot per question', async ($, on) => {
+    const { seen, clock } = world(on, { hasPanel: true, haikuSays: THREE })
+    await $.command.run({ command: 'refine', args: 'status', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 200 } } as never)
+    await start($)
+    await $.command.run({ command: 'refine', args: 'make a todo app', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 200 } } as never)
+    await clock.advance(10)
+    expect(seen.columns).toBe(120)
+    const ui = await $.ui.mount({ plugin: 'prompt-upgrade', surface: 'terminal', component: 'Pane', requestId: 'refine', props: PANE_PROPS })
+    expect(await ui.find({ type: 'Text', text: 'QUESTION 1 OF 3' })).toBeDefined()
+    expect((await ui.findAll({ type: 'Text', text: /^[●✓○]$/ })).length).toBe(3)
+    await ui.press({ key: 'opt0' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: 'QUESTION 2 OF 3' })).toBeDefined()
+    expect((await ui.find({ type: 'Text', text: /^✓$/ }))?.props.color).toBe('green')
+    await ui.unmount()
+  })
+})
+
+describe('typing, Back from the review', () => {
+  test('one typing area, no one-line field: a button and a wrapped box', async ($, on) => {
+    const { clock } = world(on, { hasPanel: true })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await $.ui.mount({ plugin: 'prompt-upgrade', surface: 'terminal', component: 'Pane', requestId: 'refine', props: PANE_PROPS })
+    expect((await ui.findAll({ type: 'Input' })).length).toBe(0)
+    expect((await ui.findAll({ type: 'Button', text: /Type my own answer/ })).length).toBe(1)
+    const framed = (await ui.findAll({ type: 'Box' })).filter(b => b.props.borderStyle === 'round')
+    expect(framed.length).toBe(3) // step bar, question card, footer
+    await ui.unmount()
+  })
+
+  test('the review offers Back next to the other choices when there were questions', async ($, on) => {
+    const { clock } = world(on, { hasPanel: true })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await $.ui.mount({ plugin: 'prompt-upgrade', surface: 'terminal', component: 'Pane', requestId: 'refine', props: PANE_PROPS })
+    await ui.press({ key: 'opt0' })
+    await clock.advance(10)
+    expect((await ui.find({ key: 'back' }))?.text).toContain('change my answers')
+    await ui.unmount()
+  })
+})
+
+describe('footer bar', () => {
+  test('Back, Skip the rest and Esc sit in the footer at full brightness', async ($, on) => {
+    const { clock } = world(on, { hasPanel: true, haikuSays: THREE })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await $.ui.mount({ plugin: 'prompt-upgrade', surface: 'terminal', component: 'Pane', requestId: 'refine', props: PANE_PROPS })
+    await ui.press({ key: 'opt0' })
+    await clock.advance(10)
+    for (const key of ['back', 'rest']) {
+      const b = await ui.find({ key })
+      expect(b).toBeDefined()
+      expect(b?.props.dimColor).toBeFalsy()
+    }
+    expect(await ui.find({ type: 'Text', text: 'Esc' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Send my prompt as typed/ })).toBeDefined()
+    await ui.unmount()
   })
 })

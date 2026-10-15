@@ -16,7 +16,7 @@ Mods use Claude Code's hooks-module API, which is early access and may change be
 | --- | --- |
 | [autoroute](mods/autoroute) | Picks the model and effort for each prompt, sends subagents to cheaper models, and keeps Fable and extra-usage spend in check. |
 | [prompt-upgrade](mods/prompt-upgrade) | Catches vague prompts, asks one quick multiple-choice question, rewrites the prompt with a working method, and lets you review it before it runs. |
-| [box-tools](mods/box-tools) | A `[ Tools ]` button at the right end of the prompt footer. Click it for a small box where you switch the model, the effort, and each of your daymods on or off. |
+| [box-tools](mods/box-tools) | A filled `✦ Tools` button at the right end of the prompt footer. Click it for a small box where you switch the model, the effort, and each of your daymods on or off. |
 | [pace-statusline](https://github.com/daydeda/claude-code-statusline) | A 4-line status line with limit bars, reset times and a pace prediction (`⚠ runs out today 4:19pm`) so you know before you hit the wall. Lives in its own repo. |
 
 More mods will be added here as they are ready.
@@ -112,16 +112,26 @@ Turns a vague prompt like "make a todo app" into a clear one before Claude start
 ### How it works
 
 1. **Spot vague prompts.** Quick local rules let most prompts straight through: follow-ups like "yes" or "continue", slash commands, questions, and anything that names a file, function, error or URL. Short, broad prompts ("make it better", "build a website") count as vague. Borderline ones get a quick Haiku check, which can also decide the prompt is already clear. "fix it" right after an error is left alone, because the conversation already says what "it" is.
-2. **Ask one quick question.** Haiku drafts one question (two at most) about the decision that matters most: scope, target, expected result or a constraint. It appears in a **side panel** (see below). Pick one of up to three choices, type your own answer, or pick **Skip**. Press Esc to send your prompt untouched.
+2. **Ask a few quick questions.** Haiku drafts as few as will do: one when one thing is open, up to three for a very vague prompt. Each is about a specific open decision in your prompt (where it runs, what it saves, how big), and one may check its reading: "Do you mean something like this: …?". They appear one at a time in a **side panel** (see below). For each, pick a numbered choice, pick **Type my own answer…** (a wrapped text box appears under it), or **Skip**. Press Esc to send your prompt untouched.
 3. **Rewrite.** Sonnet rewrites the prompt with your answer. It keeps your intent and adds the goal, where in the project, constraints and how to check it's done. It doesn't invent requirements: anything still open is left for Claude to pick a sensible default and say which.
 4. **Review.** The panel shows the rewritten prompt and its method:
    - **Run it**: sends the rewrite.
    - **Edit it myself**: puts the rewrite in the prompt box for you to change and send.
    - **Use my original**: sends what you typed, unchanged.
    - **Cancel**: sends nothing, and your text goes back in the prompt box.
-   - Or type what to change ("use Go", "smaller scope") in the field, and it rewrites again.
+   - **Ask for a change…**: type what to change ("use Go", "smaller scope") in the text box under it, and it rewrites again.
 
-The panel opens beside the transcript (or above the prompt) and each choice has a number hotkey (`1`-`3`, `s` for Skip; `1`-`4` in the review). It needs a terminal about 110 columns wide; on a narrower one it falls back to Claude Code's question dialog, with the rewrite shown inside the question. Set `ui` to `dialog` to always use the dialog.
+The panel opens beside the transcript (or above the prompt). A step bar at the top shows where you are: `✓ Your prompt → ● Questions 2/3 → ○ Rewrite → ○ Review`. Keys:
+
+- Questions: `1`-`3` pick a choice, the next number types your own answer, `s` skips the question, `x` skips the rest and rewrites now, `b` goes back to the previous question (your earlier answer is marked ✓).
+- Review: `1`-`4` as above, `5` asks for a change, `b` goes back to the questions with your answers kept, then rewrites again.
+- Always: `Esc` sends your prompt as typed. Back, Skip the rest and Esc sit together in a bar at the bottom of the panel.
+
+Each question is its own card (`QUESTION 2 OF 3`, one dot per question). The panel uses Claude's orange for what is current and green for what is done, and opens at about 60% of the terminal width once you have run `/refine` once (100 columns before that).
+
+**Typing your own answer.** Claude Code's text field is one line and cuts long text off, so the panel draws its own wrapped text box instead. Press the typing key (or click the box), type, and press Enter. It supports typing, Backspace and Ctrl+U to clear; there is no cursor movement. It is not available in the VS Code and mobile layouts, which only get the numbered choices and Skip.
+
+The panel needs a terminal about 110 columns wide; on a narrower one it falls back to Claude Code's question dialog, with the rewrite shown inside the question. Set `ui` to `dialog` to always use the dialog.
 
 ### Methods
 
@@ -150,7 +160,7 @@ Each rewrite picks one working method and writes its step into the prompt:
 
 ## 🧰 box-tools
 
-A `[ Tools ]` button sits at the right end of the prompt footer. Click it and a small box opens beside the transcript:
+A filled orange `✦ Tools` pill sits at the right end of the prompt footer. Click it and a small box opens beside the transcript:
 
 ```
 ✦ Tools                                       Opus · high
@@ -170,7 +180,7 @@ A `[ Tools ]` button sits at the right end of the prompt footer. Click it and a 
 
 ### Controls
 
-- **Open:** click `[ Tools ]`, or run `/tools`. Clicking the button again closes the box.
+- **Open:** click `✦ Tools`, or run `/tools`. Clicking the button again closes the box.
 - **Pick:** click a choice, press its hotkey, or Tab to it and press Enter. Hotkeys: `1`-`5` for models, `q` `w` `e` `r` `t` for effort, `a` `s` `d`… for mods.
 - **Close:** Esc, a click anywhere outside the box (the transcript or the prompt), `x`, or the button again.
 
