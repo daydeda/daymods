@@ -1,0 +1,28 @@
+{
+  "name": "autoroute",
+  "version": "0.1.0",
+  "description": "Picks the model and effort per prompt, routes subagents to cheap models, and gates Fable and extra-usage spend.",
+  "author": {
+    "name": "daydeda"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/daydeda/daymods",
+  "userConfig": {
+    "classifier": {
+      "type": "string",
+      "title": "Classifier",
+      "description": "How unclear prompts are classified: rules first, then a low-effort Haiku call; or rules alone.",
+      "options": [
+        "rules+haiku",
+        "rules"
+      ],
+      "default": "rules+haiku"
+    },
+    "spendGuardPercent": {
+      "type": "number",
+      "title": "Spend guard threshold (%)",
+      "description": "With extra usage on, routes cap at Sonnet once any rate-limit window is used past this percent.",
+      "default": 90
+    }
+  }
+}

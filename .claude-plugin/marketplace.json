@@ -1,0 +1,14 @@
+{
+  "name": "daymods",
+  "description": "Small, independent mods for Claude Code. Install only the ones you want.",
+  "owner": {
+    "name": "daydeda"
+  },
+  "plugins": [
+    {
+      "name": "autoroute",
+      "source": "./mods/autoroute",
+      "description": "Picks the model and effort per prompt, routes subagents to cheap models, and gates Fable and extra-usage spend."
+    }
+  ]
+}
