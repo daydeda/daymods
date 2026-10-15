@@ -11,6 +11,11 @@
       "description": "Picks the model and effort per prompt, routes subagents to cheap models, and gates Fable and extra-usage spend."
     },
     {
+      "name": "box-tools",
+      "source": "./mods/box-tools",
+      "description": "A Tools button at the right end of the prompt footer that opens a small box to switch the model, the effort and your daymods on or off."
+    },
+    {
       "name": "pace-statusline",
       "source": {
         "source": "github",

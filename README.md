@@ -3,7 +3,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-34d399?style=flat-square"></a>
   <img alt="Claude Code 2.1.300+" src="https://img.shields.io/badge/Claude%20Code-2.1.300%2B-818cf8?style=flat-square">
-  <img alt="mods" src="https://img.shields.io/badge/mods-2-f472b6?style=flat-square">
+  <img alt="mods" src="https://img.shields.io/badge/mods-3-f472b6?style=flat-square">
 </p>
 
 A collection of small mods for [Claude Code](https://claude.com/claude-code). Each mod is its own plugin, so you install only the ones you want.
@@ -15,6 +15,7 @@ Mods use Claude Code's hooks-module API, which is early access and may change be
 | Mod | What it does |
 | --- | --- |
 | [autoroute](mods/autoroute) | Picks the model and effort for each prompt, sends subagents to cheaper models, and keeps Fable and extra-usage spend in check. |
+| [box-tools](mods/box-tools) | A `[ Tools ]` button at the right end of the prompt footer. Click it for a small box where you switch the model, the effort, and each of your daymods on or off. |
 | [pace-statusline](https://github.com/daydeda/claude-code-statusline) | A 4-line status line with limit bars, reset times and a pace prediction (`⚠ runs out today 4:19pm`) so you know before you hit the wall. Lives in its own repo. |
 
 More mods will be added here as they are ready.
@@ -34,6 +35,7 @@ Or from a shell:
 ```bash
 claude plugin marketplace add daydeda/daymods
 claude plugin install autoroute@daymods
+claude plugin install box-tools@daymods
 claude plugin install pace-statusline@daymods
 ```
 
@@ -100,6 +102,45 @@ The plan check reads a local file the user can edit. It prevents accidental char
 - The keyword rules are a starting point and will misjudge some prompts. Use `!` overrides, or `/route status` to see why a route was chosen.
 - The model IDs are set in `mods/autoroute/hooks/route.ts`. If your Claude Code build uses different IDs, change them there.
 - The Haiku classifier sends the start of your prompt (up to 4000 characters) to Haiku through your own Claude session. Nothing goes to any other service.
+
+## 🧰 box-tools
+
+A `[ Tools ]` button sits at the right end of the prompt footer. Click it and a small box opens beside the transcript:
+
+```
+✦ Tools                                       Opus · high
+╭─────────────────────────────────────────────────────────╮
+│ ◆  Model                                            1-5 │
+│ 1: ○ Default 2: ○ Haiku 3: ○ Sonnet 4: ● Opus 5: ○ Fable │
+╰─────────────────────────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────╮
+│ ⚡ Effort                                    q w e r t │
+│ q: ○ low  w: ○ medium  e: ● high  r: ○ xhigh  t: ○ max  │
+╰─────────────────────────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────╮
+│ ❖  Mods                                         a s d … │
+│ a: ● on   autoroute                                     │
+╰─────────────────────────────────────────────────────────╯
+```
+
+### Controls
+
+- **Open:** click `[ Tools ]`, or run `/tools`. Clicking the button again closes the box.
+- **Pick:** click a choice, press its hotkey, or Tab to it and press Enter. Hotkeys: `1`-`5` for models, `q` `w` `e` `r` `t` for effort, `a` `s` `d`… for mods.
+- **Close:** Esc, a click anywhere outside the box (the transcript or the prompt), `x`, or the button again.
+
+### What each control does
+
+- **Model** sets the `model` row of `/config`, the same as picking it there. It becomes your default for new sessions too.
+- **Effort** runs the built-in `/effort <level>`, as if you typed it. Claude Code saves the level for the current model, so it carries over to new sessions.
+- **Mods** lists the daymods you have installed (Box Tools itself is left out). A toggle runs `claude plugin enable` or `claude plugin disable`, then `/reload-plugins`, so the change applies right away and stays on or off in later sessions.
+
+### Notes and limits
+
+- When **autoroute** is on, it picks the model and effort for each prompt and overrides what you pick here. The box says so. Turn autoroute off in the same box to keep your pick.
+- A change made while Claude is working waits until the turn ends, the same as a typed command.
+- Mods loaded with `--plugin-dir` aren't installed, so they don't appear in the list.
+- **Options** (in `/config`): `button` (`show` or `hide`). With `hide`, the footer is left alone and `/tools` opens the box.
 
 ## 🛠 Development
 
