@@ -9,7 +9,6 @@ Mods use Claude Code's hooks-module API, which is early access and may change be
 | Mod | What it does |
 | --- | --- |
 | [autoroute](mods/autoroute) | Picks the model and effort for each prompt, sends subagents to cheaper models, and keeps Fable and extra-usage spend in check. |
-
 | [pace-statusline](https://github.com/daydeda/claude-code-statusline) | A 4-line status line with limit bars, reset times and a pace prediction (`⚠ runs out today 4:19pm`) so you know before you hit the wall. Lives in its own repo. |
 
 More mods will be added here as they are ready.
