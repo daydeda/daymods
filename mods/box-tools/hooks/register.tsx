@@ -206,7 +206,9 @@ export const register: Register = (on, options) => {
     return (
       <Box flexDirection="row" gap={1}>
         {modes.length > 0 && <Text dimColor>{modes.join(' & ')}</Text>}
-        <Button key="tools" onPress={() => void toggle($)}>Tools</Button>
+        <Button key="tools" plain onPress={() => void toggle($)}>
+          <Text bold inverse color="claude">{' ✦ Tools '}</Text>
+        </Button>
       </Box>
     )
   })
