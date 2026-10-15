@@ -30,6 +30,8 @@ const Editor: ClientModule<Props, State> = (props, surface) => {
     }
     if (event.key === 'backspace' || event.key === 'delete') buffer = [...buffer].slice(0, -1).join('')
     else if (event.ctrl && event.key === 'u') buffer = ''
+    // The space bar arrives by its name, not as a character.
+    else if (!event.ctrl && !event.meta && event.key === 'space') buffer += ' '
     else if (!event.ctrl && !event.meta && !NAMED.has(event.key)) buffer += event.key
     else return
     surface.setState({ text: buffer })

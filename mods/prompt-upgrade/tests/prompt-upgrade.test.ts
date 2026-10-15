@@ -424,6 +424,20 @@ describe('step by step in the panel', () => {
   })
 })
 
+describe('typing box keys', () => {
+  test('the space bar types a space, not the word "space"', async ($, on) => {
+    const { clock } = world(on, { hasPanel: true })
+    await start($)
+    await submit($, 'make a todo app')
+    await clock.advance(10)
+    const ui = await $.ui.mount({ plugin: 'prompt-upgrade', surface: 'terminal', component: 'Pane', requestId: 'refine', props: PANE_PROPS })
+    for (const key of ['t', 'e', 's', 't', 'space', 'h', 'i']) await ui.key({ key, in: 'editor-ask-0-0' })
+    await clock.advance(10)
+    expect(await ui.find({ type: 'Text', text: 'test hi▌', in: 'editor-ask-0-0' })).toBeDefined()
+    await ui.unmount()
+  })
+})
+
 describe('step bar', () => {
   test('finished, current and later steps look different', async ($, on) => {
     const { clock } = world(on, { hasPanel: true, haikuSays: THREE })
