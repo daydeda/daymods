@@ -1,6 +1,6 @@
 {
   "name": "box-tools",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A Tools button above the prompt that opens a small box to switch the model, the effort and your daymods on or off.",
   "author": {
     "name": "daydeda"

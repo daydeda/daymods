@@ -88,6 +88,7 @@ async function takeKeyboard($: EngineInterface) {
   if (!pane || pane.isFocused) return
   await $.ui.close({ id: PANE }).catch(() => undefined)
   const opened = await $.ui.open(PANE_ARGS).catch(() => undefined)
+  isShown = opened !== undefined
   if (opened?.isPlaced) watchFocus($)
 }
 
@@ -148,6 +149,7 @@ function watchFocus($: EngineInterface) {
       else if ((await $.clock.now()) < graceUntil) await takeKeyboard($)
       else if (hadFocus) {
         stopWatch()
+        isShown = false
         await $.ui.close({ id: PANE }).catch(() => undefined)
       }
     })()
@@ -158,35 +160,44 @@ async function isOpen($: EngineInterface) {
   return (await $.ui.panes()).some(p => p.id === PANE)
 }
 
+// Whether the box is open, kept here so a press can act before its first await: a pane opened
+// within the person's press is placed at any width, one opened after awaiting is "unasked".
+let isShown = false
+
+function closeBox($: EngineInterface) {
+  isShown = false
+  stopWatch()
+  void $.ui.close({ id: PANE }).catch(() => undefined)
+}
+
+// Opens at once and returns whether the surface drew it.
+function openBox($: EngineInterface): Promise<boolean> {
+  const opening = $.ui.open(PANE_ARGS)
+  isShown = true
+  void update($, view, (v): View => ({ ...v, note: '' }))
+  void refresh($)
+  return opening.then(opened => {
+    if (opened.isPlaced) watchFocus($)
+    else $.ui.toast(`Tools box can't be drawn here: ${firstLine(String((opened as { reason?: unknown }).reason ?? 'no room'))}`)
+    return opened.isPlaced
+  })
+}
+
 // The footer button and /tools both toggle the box.
 async function toggle($: EngineInterface): Promise<boolean> {
-  if (await isOpen($)) {
-    stopWatch()
-    await $.ui.close({ id: PANE }).catch(() => undefined)
-    return false
-  }
-  await update($, view, (v): View => ({ ...v, note: '' }))
-  void refresh($)
-  const opened = await $.ui.open(PANE_ARGS)
-  if (opened.isPlaced) watchFocus($)
-  return opened.isPlaced
+  if (isShown) return closeBox($), false
+  return openBox($)
 }
 
 // A click can arrive as two presses (down and up): the second inside this window is dropped.
 const PRESS_GUARD_MS = 300
-let lastPress = -PRESS_GUARD_MS
+let lastPress = 0
 
-// The footer button: toggles the box, and says so when it can't.
-async function press($: EngineInterface) {
-  const now = await $.clock.now()
+function press($: EngineInterface) {
+  const now = Date.now()
   if (now - lastPress < PRESS_GUARD_MS) return
   lastPress = now
-  $.ui.toast('Tools: button pressed')
-  try {
-    await toggle($)
-  } catch (err) {
-    $.ui.toast(`Tools: ${firstLine(String(err))}`)
-  }
+  void toggle($).catch((err: unknown) => $.ui.toast(`Tools: ${firstLine(String(err))}`))
 }
 
 export const register: Register = (on, options) => {
@@ -196,7 +207,8 @@ export const register: Register = (on, options) => {
     await $.command.register({ name: 'tools', description: 'box-tools: open the Tools box (model, effort, mods)' })
     // A reload with the box open (after a mod toggle) picks the fresh plugin list up
     // and takes the keyboard back once /reload-plugins has finished with it.
-    if (await isOpen($)) {
+    isShown = await isOpen($)
+    if (isShown) {
       void refresh($)
       graceUntil = (await $.clock.now()) + GRACE_MS
       watchFocus($)
@@ -211,6 +223,7 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.close', { id: PANE }, async ($, e, next) => {
+    isShown = false
     stopWatch()
     return next(e)
   })
@@ -222,7 +235,7 @@ export const register: Register = (on, options) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     return (
       <Box flexDirection="row" justifyContent="flex-end">
-        <Button key="tools" plain onPress={() => void press($)}>
+        <Button key="tools" plain onPress={() => press($)}>
           <Text bold inverse color="claude">{' ✦ Tools '}</Text>
         </Button>
       </Box>

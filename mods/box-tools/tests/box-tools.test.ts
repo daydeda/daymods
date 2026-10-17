@@ -89,14 +89,14 @@ describe('helpers', () => {
 describe('band button', () => {
   for (const surface of ['terminal', 'desktop'] as const) {
     test(`a Tools button sits in the band above the prompt (${surface})`, async ($, on) => {
-      const { seen, clock } = world(on)
+      const { seen } = world(on)
       await start($)
       const ui = await $.ui.mount({ plugin: 'box-tools', surface, component: 'AbovePrompt', props: { hasSurvey: false } as never })
       await ui.press({ key: 'tools' })
       expect(seen.opened).toBe(1)
       await ui.press({ key: 'tools' })
       expect(seen.closed).toBe(0)
-      await clock.advance(400)
+      for (const end = Date.now() + 350; Date.now() < end;) await Promise.resolve()
       await ui.press({ key: 'tools' })
       expect(seen.closed).toBe(1)
       await ui.unmount()
