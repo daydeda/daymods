@@ -1,7 +1,7 @@
 {
   "name": "box-tools",
-  "version": "0.1.1",
-  "description": "A Tools button at the right end of the prompt footer that opens a small box to switch the model, the effort and your daymods on or off.",
+  "version": "0.2.0",
+  "description": "A Tools button above the prompt that opens a small box to switch the model, the effort and your daymods on or off.",
   "author": {
     "name": "daydeda"
   },
@@ -10,8 +10,8 @@
   "userConfig": {
     "button": {
       "type": "string",
-      "title": "Footer button",
-      "description": "show: a Tools button at the right end of the prompt footer. hide: no button; open the box with /tools.",
+      "title": "Tools button",
+      "description": "show: a Tools button in a row above the prompt. hide: no button; open the box with /tools.",
       "options": [
         "show",
         "hide"

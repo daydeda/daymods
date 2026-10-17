@@ -198,14 +198,13 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // The right end of the prompt footer: the engine's mode labels, then the Tools button.
-  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
-    if (!showButton) return next(e)
+  // A Button is pressable in the band above the prompt or in a pane; the footer's mode labels
+  // no longer take a click. So the Tools button is one right-aligned row of the band.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (!showButton || e.props.hasSurvey) return next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
-    const modes = e.props.modes
     return (
-      <Box flexDirection="row" gap={1}>
-        {modes.length > 0 && <Text dimColor>{modes.join(' & ')}</Text>}
+      <Box flexDirection="row" justifyContent="flex-end">
         <Button key="tools" plain onPress={() => void toggle($)}>
           <Text bold inverse color="claude">{' ✦ Tools '}</Text>
         </Button>

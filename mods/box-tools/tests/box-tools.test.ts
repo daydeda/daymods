@@ -86,13 +86,12 @@ describe('helpers', () => {
   })
 })
 
-describe('footer button', () => {
+describe('band button', () => {
   for (const surface of ['terminal', 'desktop'] as const) {
-    test(`a Tools button sits after the mode labels (${surface})`, async ($, on) => {
+    test(`a Tools button sits in the band above the prompt (${surface})`, async ($, on) => {
       const { seen } = world(on)
       await start($)
-      const ui = await $.ui.mount({ plugin: 'box-tools', surface, component: 'SessionMode', props: { modes: ['focus'] } as never })
-      expect(await ui.find({ type: 'Text', text: /focus/ })).toBeDefined()
+      const ui = await $.ui.mount({ plugin: 'box-tools', surface, component: 'AbovePrompt', props: { hasSurvey: false } as never })
       await ui.press({ key: 'tools' })
       expect(seen.opened).toBe(1)
       await ui.press({ key: 'tools' })
@@ -101,11 +100,11 @@ describe('footer button', () => {
     })
   }
 
-  test('button: hide leaves the footer alone', { options: { button: 'hide' } }, async ($, on) => {
+  test('button: hide leaves the band alone', { options: { button: 'hide' } }, async ($, on) => {
     world(on)
-    on('ui.render', { component: 'SessionMode' }, () => ({ type: 'Text', props: {}, children: ['engine'] }) as never)
+    on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Text', props: {}, children: ['engine'] }) as never)
     await start($)
-    const ui = await $.ui.mount({ plugin: 'box-tools', surface: 'terminal', component: 'SessionMode', props: { modes: [] } as never })
+    const ui = await $.ui.mount({ plugin: 'box-tools', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false } as never })
     expect(await ui.find({ key: 'tools' })).toBeUndefined()
     await ui.unmount()
   })

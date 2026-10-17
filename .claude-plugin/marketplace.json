@@ -18,7 +18,7 @@
     {
       "name": "box-tools",
       "source": "./mods/box-tools",
-      "description": "A Tools button at the right end of the prompt footer that opens a small box to switch the model, the effort and your daymods on or off."
+      "description": "A Tools button in a row above the prompt that opens a small box to switch the model, the effort and your daymods on or off."
     },
     {
       "name": "pace-statusline",

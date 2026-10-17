@@ -16,7 +16,7 @@ Mods use Claude Code's hooks-module API, which is early access and may change be
 | --- | --- |
 | [autoroute](mods/autoroute) | Picks the model and effort for each prompt, sends subagents to cheaper models, and keeps Fable and extra-usage spend in check. |
 | [prompt-upgrade](mods/prompt-upgrade) | Catches vague prompts, asks one quick multiple-choice question, rewrites the prompt with a working method, and lets you review it before it runs. |
-| [box-tools](mods/box-tools) | A filled `✦ Tools` button at the right end of the prompt footer. Click it for a small box where you switch the model, the effort, and each of your daymods on or off. |
+| [box-tools](mods/box-tools) | A filled `✦ Tools` button in a row above the prompt. Click it for a small box where you switch the model, the effort, and each of your daymods on or off. |
 | [pace-statusline](https://github.com/daydeda/claude-code-statusline) | A 4-line status line with limit bars, reset times and a pace prediction (`⚠ runs out today 4:19pm`) so you know before you hit the wall. Lives in its own repo. |
 
 More mods will be added here as they are ready.
@@ -160,7 +160,7 @@ Each rewrite picks one working method and writes its step into the prompt:
 
 ## 🧰 box-tools
 
-A filled orange `✦ Tools` pill sits at the right end of the prompt footer. Click it and a small box opens beside the transcript:
+A filled orange `✦ Tools` pill sits in a row above the prompt. Click it and a small box opens beside the transcript:
 
 ```
 ✦ Tools                                       Opus · high
@@ -195,7 +195,7 @@ A filled orange `✦ Tools` pill sits at the right end of the prompt footer. Cli
 - When **autoroute** is on, it picks the model and effort for each prompt and overrides what you pick here. The box says so. Turn autoroute off in the same box to keep your pick.
 - A change made while Claude is working waits until the turn ends, the same as a typed command.
 - Mods loaded with `--plugin-dir` aren't installed, so they don't appear in the list.
-- **Options** (in `/config`): `button` (`show` or `hide`). With `hide`, the footer is left alone and `/tools` opens the box.
+- **Options** (in `/config`): `button` (`show` or `hide`). With `hide`, the band is left alone and `/tools` opens the box.
 
 ## 🛠 Development
 
