@@ -172,6 +172,23 @@ async function toggle($: EngineInterface): Promise<boolean> {
   return opened.isPlaced
 }
 
+// A click can arrive as two presses (down and up): the second inside this window is dropped.
+const PRESS_GUARD_MS = 300
+let lastPress = -PRESS_GUARD_MS
+
+// The footer button: toggles the box, and says so when it can't.
+async function press($: EngineInterface) {
+  const now = await $.clock.now()
+  if (now - lastPress < PRESS_GUARD_MS) return
+  lastPress = now
+  $.ui.toast('Tools: button pressed')
+  try {
+    await toggle($)
+  } catch (err) {
+    $.ui.toast(`Tools: ${firstLine(String(err))}`)
+  }
+}
+
 export const register: Register = (on, options) => {
   showButton = options.button !== 'hide'
 
@@ -205,7 +222,7 @@ export const register: Register = (on, options) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     return (
       <Box flexDirection="row" justifyContent="flex-end">
-        <Button key="tools" plain onPress={() => void toggle($)}>
+        <Button key="tools" plain onPress={() => void press($)}>
           <Text bold inverse color="claude">{' ✦ Tools '}</Text>
         </Button>
       </Box>
